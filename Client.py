@@ -28,3 +28,11 @@ def main():
 
 if __name__ == "__main__":
     main()
+    
+    
+def new_client_name():
+    """Return next zero-padded name: Client01, Client02, ...  (2)"""
+    global next_client_id
+    next_client_id += 1
+    return f"Client{next_client_id:02d}"
+#test

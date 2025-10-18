@@ -6,7 +6,16 @@ SERVER_PORT = 12000
 BUFFER = 2048
 ENC = "utf-8"
 
+MAX_CLIENTS = 3  # Part 4
+next_client_id = 0  # Part 2
+active = 0          # amount connected
+sessions = {}
+
+
 def main():
+    global active
+    
+    #Part 1 
     # create TCP
     serverSocket = socket(AF_INET, SOCK_STREAM)
     serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
@@ -47,4 +56,12 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+#2
+def new_client_name():
+    """Return next zero-padded name: Client01, Client02, ...  (2)"""
+    global next_client_id
+    next_client_id += 1
+    return f"Client{next_client_id:02d}"
+
 
