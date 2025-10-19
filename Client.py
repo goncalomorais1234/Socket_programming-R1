@@ -1,38 +1,24 @@
-#Client
-from socket import *
+import socket
 
-SERVER_NAME = 'localhost' 
-SERVER_PORT = 12000
-BUFFER = 2048
-ENC = "utf-8"
+def start_client():
+    client_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    client_socket.connect(('localhost', 12345))  # Connect to the server
 
-def main():
-    # create TCP socket and connect
-    clientSocket = socket(AF_INET, SOCK_STREAM)
-    clientSocket.connect((SERVER_NAME, SERVER_PORT))
-
-    try:
-        while True:
-            sentence = input("Input message (or /quit): ")
-            clientSocket.send((sentence + "\n").encode(ENC))
-            if sentence.strip() == "/quit":
-                break
-
-            modifiedSentence = clientSocket.recv(BUFFER)
-            if not modifiedSentence:
-                print("*** Server closed connection ***")
-                break
-            print("From Server:", modifiedSentence.decode(ENC).strip())
-    finally:
-        clientSocket.close()
-
-if __name__ == "__main__":
-    main()
+    # Receive client name from server
+    client_name = client_socket.recv(1024).decode()
+    print(f"You are {client_name}")
     
-    
-def new_client_name():
-    """Return next zero-padded name: Client01, Client02, ...  (2)"""
-    global next_client_id
-    next_client_id += 1
-    return f"Client{next_client_id:02d}"
-#test
+    while True:
+        message = input("Enter message: ")
+        client_socket.send(message.encode())
+        
+        if message.lower() == "exit":
+            break
+            
+        data = client_socket.recv(1024).decode()
+        print(f"Server response: {data}")
+
+    client_socket.close()
+
+if __name__ == '__main__':
+    start_client()

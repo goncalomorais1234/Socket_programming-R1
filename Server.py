@@ -1,67 +1,91 @@
-#Server
+import socket
+import datetime
+import threading
 
-from socket import *
+# Global variables
+client_counter = 0
+client_cache = {}
+max_clients = 3
+files_repo = {
+    "file1.txt": "This is the content of file 1. Hello from server!",
+    "file2.txt": "This is the content of file 2. Welcome to the chat application!"
+}
 
-SERVER_PORT = 12000
-BUFFER = 2048
-ENC = "utf-8"
-
-MAX_CLIENTS = 3  # Part 4
-next_client_id = 0  # Part 2
-active = 0          # amount connected
-sessions = {}
-
-
-def main():
-    global active
+def handle_client(client_socket, addr):
+    global client_counter, client_cache
     
-    #Part 1 
-    # create TCP
-    serverSocket = socket(AF_INET, SOCK_STREAM)
-    serverSocket.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    # Assign client name
+    client_counter += 1
+    client_name = f"Client{client_counter:02d}"
+    
+    # Add to cache
+    client_cache[client_name] = [{
+        "address": list(addr),
+        "connected_at": str(datetime.datetime.now()),
+        "disconnected_at": None
+    }]
+    
+    # Send client name to client
+    client_socket.send(client_name.encode())
+    
+    try:
+        while True:
+            data = client_socket.recv(1024).decode()
+            if not data:
+                break
+                
+            print(f"Received from {client_name}: {data}")
+            
+            if data.lower() == "exit":
+                # Update disconnect time in cache
+                for entry in client_cache[client_name]:
+                    if entry["disconnected_at"] is None:
+                        entry["disconnected_at"] = str(datetime.datetime.now())
+                break
+            elif data.lower() == "status":
+                response = str(client_cache)
+                client_socket.send(response.encode())
+            elif data.lower() == "list":
+                file_list = ", ".join(files_repo.keys())
+                client_socket.send(file_list.encode())
+            elif data.lower() in [f.lower() for f in files_repo.keys()]:
+                # Find the correct case for the filename
+                actual_filename = next(f for f in files_repo.keys() if f.lower() == data.lower())
+                file_content = files_repo[actual_filename]
+                client_socket.send(file_content.encode())
+            else:
+                response = data + " ACK"
+                client_socket.send(response.encode())
+                
+    finally:
+        client_socket.close()
 
-    # bind socket to local port number (12000) 
-    serverSocket.bind(('', SERVER_PORT))
+def start_server():
+    global client_counter, client_cache
+    
+    server_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    server_socket.bind(('localhost', 12345))  # Bind to localhost on port 12345
+    server_socket.listen(5)
+    print("Server is listening...")
 
-    # server begins listening for requests
-    serverSocket.listen(1)
-    print('The server is ready to receive on port', SERVER_PORT)
+    while True:
+        client_socket, addr = server_socket.accept()
+        print(f"Connection from {addr}")
+        
+        # Check if we can accept more clients
+        current_clients = sum(1 for client_entries in client_cache.values() 
+                            for entry in client_entries 
+                            if entry["disconnected_at"] is None)
+        
+        if current_clients >= max_clients:
+            client_socket.send("Server is full. Please try again later.".encode())
+            client_socket.close()
+            continue
+            
+        # Handle client in a new thread
+        client_thread = threading.Thread(target=handle_client, args=(client_socket, addr))
+        client_thread.daemon = True
+        client_thread.start()
 
-    while True:                       # loop forever
-        # wait for client
-        connectionSocket, addr = serverSocket.accept()
-        print('Connected by', addr)
-
-        try:
-            # echo
-            while True:
-                data = connectionSocket.recv(BUFFER)   # bytes
-                if not data:
-                    break
-                msg = data.decode(ENC).strip()
-
-                if msg == '/quit':
-                    connectionSocket.send(('*** bye ***\n').encode(ENC))
-                    break
-
-                # echo back 
-                reply = (msg.upper() + '\n').encode(ENC)
-                connectionSocket.send(reply)
-        except:
-            #for transient client errors
-            pass
-        finally:
-            connectionSocket.close()
-            print('Client disconnected')
-
-if __name__ == "__main__":
-    main()
-
-#2
-def new_client_name():
-    """Return next zero-padded name: Client01, Client02, ...  (2)"""
-    global next_client_id
-    next_client_id += 1
-    return f"Client{next_client_id:02d}"
-
-
+if __name__ == '__main__':
+    start_server()
