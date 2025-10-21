@@ -1,3 +1,6 @@
+#Written by Goncalo Morais (ID:200695080) and Cagri Isilak (ID:210764050)
+
+#Client File
 import socket
 
 def start_client():
